@@ -1,0 +1,383 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mobile Data Entry</title>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary: #007bff;
+            --bg: #f4f4f9;
+            --card-bg: #ffffff;
+            --text: #333;
+        }
+
+        * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: var(--bg);
+            color: var(--text);
+            padding-bottom: 80px; /* Space for footer */
+        }
+
+        /* Header */
+        header {
+            background: var(--primary);
+            color: white;
+            padding: 15px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h1 { margin: 0; font-size: 1.2rem; }
+
+        /* File Input Section */
+        .upload-section {
+            padding: 15px;
+            background: white;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            background: #fafafa;
+        }
+
+        /* Search */
+        .search-box {
+            width: 100%;
+            padding: 12px;
+            margin-top: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+
+        /* Data List (Cards) */
+        #data-container {
+            padding: 10px;
+            display: grid;
+            gap: 10px;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border-left: 5px solid var(--primary);
+            position: relative;
+        }
+
+        .card-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+
+        .card-label { font-weight: bold; color: #666; font-size: 0.85rem; }
+        .card-val { font-weight: 500; }
+        
+        .card-header {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin-bottom: 8px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+        }
+
+        .edit-btn {
+            background: transparent;
+            border: 1px solid var(--primary);
+            color: var(--primary);
+            padding: 5px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        /* Modal (Popup) */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: flex-end; /* Bottom sheet effect on mobile */
+        }
+        
+        .modal.active { display: flex; }
+
+        .modal-content {
+            background: white;
+            width: 100%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            border-radius: 15px 15px 0 0;
+            padding: 20px;
+            animation: slideUp 0.3s;
+        }
+
+        @keyframes slideUp { from {transform: translateY(100%);} to {transform: translateY(0);} }
+
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .btn-save { background: var(--primary); color: white; }
+        .btn-cancel { background: #ddd; color: black; }
+
+        /* Floating Save Button */
+        .fab-save {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #28a745;
+            color: white;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            cursor: pointer;
+            z-index: 90;
+        }
+        
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="header-content">
+        <h1>Booth Data Entry</h1>
+        <span id="record-count" style="font-size: 0.9rem;">0 Records</span>
+    </div>
+</header>
+
+<div class="upload-section">
+    <label style="display:block; margin-bottom:5px; font-weight:bold;">Load Source File:</label>
+    <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" />
+    <input type="text" id="searchInput" class="search-box" placeholder="Search Name or Vote No..." onkeyup="filterData()">
+</div>
+
+<div id="data-container">
+    <div class="empty-state">
+        Please upload an .xlsx file to begin editing.
+    </div>
+</div>
+
+<div class="fab-save" onclick="exportFile()" title="Save & Download">💾</div>
+
+<div id="editModal" class="modal">
+    <div class="modal-content">
+        <h2>Edit Record</h2>
+        <div id="modal-form-body">
+            </div>
+        <div class="modal-actions">
+            <button class="btn btn-cancel" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-save" onclick="saveModalData()">Save</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let globalData = [];
+    let currentHeaders = [];
+    let currentEditIndex = -1;
+
+    // 1. Handle File Upload
+    document.getElementById('fileInput').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if(!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const data = new Uint8Array(event.target.result);
+            const workbook = XLSX.read(data, {type: 'array'});
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            
+            // Convert to JSON
+            const jsonData = XLSX.utils.sheet_to_json(firstSheet, {defval: ""});
+            
+            if(jsonData.length > 0) {
+                globalData = jsonData;
+                currentHeaders = Object.keys(jsonData[0]);
+                renderCards(globalData);
+            } else {
+                alert("File appears empty!");
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    });
+
+    // 2. Render Data as Cards
+    function renderCards(data) {
+        const container = document.getElementById('data-container');
+        document.getElementById('record-count').innerText = `${data.length} Records`;
+        container.innerHTML = '';
+
+        data.forEach((row, index) => {
+            // Try to find the "ID" of the row in the filtered list to map back to globalData
+            const globalIndex = globalData.indexOf(row);
+            
+            // Identify key columns for display (loose matching for robustness)
+            const voteNo = findValue(row, ['vote', 'no', 'number', 'S.No']) || '#';
+            const name = findValue(row, ['Name', 'Name', 'English']) || 'Unknown';
+            const namePbi = findValue(row, ['ਵੋਟਰ ਦਾ ਨਾਮ', 'punjabi', 'regional']) || '';
+            const house = findValue(row, ['house', 'makan', 'h.no']) || '';
+
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+                <div class="card-header">${voteNo} - ${name}</div>
+                <div class="card-row">
+                    <span class="card-val">${namePbi}</span>
+                </div>
+                <div class="card-row">
+                    <span class="card-label">House No:</span>
+                    <span class="card-val">${house}</span>
+                </div>
+                <button class="edit-btn" onclick="openEdit(${globalIndex})">Edit Details</button>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    // Helper to find column values even if headers vary slightly
+    function findValue(row, keywords) {
+        const keys = Object.keys(row);
+        for (let k of keys) {
+            for (let word of keywords) {
+                if (k.toLowerCase().includes(word.toLowerCase())) return row[k];
+            }
+        }
+        return '';
+    }
+
+    // 3. Search Filter
+    function filterData() {
+        const query = document.getElementById('searchInput').value.toLowerCase();
+        const filtered = globalData.filter(row => {
+            return Object.values(row).some(val => 
+                String(val).toLowerCase().includes(query)
+            );
+        });
+        renderCards(filtered);
+    }
+
+    // 4. Edit Logic
+    function openEdit(index) {
+        currentEditIndex = index;
+        const rowData = globalData[index];
+        const formBody = document.getElementById('modal-form-body');
+        formBody.innerHTML = '';
+
+        // Generate input fields dynamically based on headers
+        currentHeaders.forEach(header => {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'form-group';
+            
+            const label = document.createElement('label');
+            label.innerText = header;
+            
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.id = `input-${header.replace(/\s/g, '_')}`; // Sanitize ID
+            input.value = rowData[header] || '';
+            input.dataset.header = header; // Store original header name
+
+            wrapper.appendChild(label);
+            wrapper.appendChild(input);
+            formBody.appendChild(wrapper);
+        });
+
+        document.getElementById('editModal').classList.add('active');
+    }
+
+    function closeModal() {
+        document.getElementById('editModal').classList.remove('active');
+    }
+
+    function saveModalData() {
+        if(currentEditIndex === -1) return;
+
+        const inputs = document.querySelectorAll('#modal-form-body input');
+        inputs.forEach(input => {
+            const header = input.dataset.header;
+            globalData[currentEditIndex][header] = input.value;
+        });
+
+        closeModal();
+        renderCards(globalData); // Re-render to show changes
+        filterData(); // Re-apply filter if active
+    }
+
+    // 5. Export Logic
+    function exportFile() {
+        if(globalData.length === 0) {
+            alert("No data to export!");
+            return;
+        }
+
+        const ws = XLSX.utils.json_to_sheet(globalData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+        
+        // Save file
+        XLSX.writeFile(wb, "Updated_Booth_Data.xlsx");
+    }
+</script>
+
+</body>
+</html>
