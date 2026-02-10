@@ -377,14 +377,7 @@
 
         // Determine order: Try to put important fields first
         const priorityKeys = ['Vote No', 'Name', 'Name (Pbi)', 'EPIC NO.', 'House No'];
-        const otherKeys = currentHeaders.filter(k => !priorityKeys.some(pk => k.includes(pk)));
         
-        // Sort headers to show priority ones first, but keep dynamic
-        const sortedKeys = currentHeaders.sort((a,b) => {
-             // This is a simple sort, in production you might want strict mapping
-             return 0; 
-        });
-
         currentHeaders.forEach(key => {
             const wrapper = document.createElement('div');
             wrapper.className = 'form-group';
@@ -422,10 +415,8 @@
         }
 
         closeModal();
-        renderList(); // Re-render logic handles filtering reset or maintenance
-        filterData(); // Keep current filter active
-        
-        // alert("Saved!");
+        renderList(); 
+        filterData(); 
     }
 
     function closeModal() {
@@ -438,15 +429,43 @@
             return;
         }
         
+        // 1. Confirm and Ask for Filename
+        const defaultName = `Booth_Data_${new Date().getHours()}${new Date().getMinutes()}.xlsx`;
+        let fileName = prompt("Enter filename to save:", defaultName);
+        
+        if (fileName === null) return; // User clicked Cancel
+        
+        // Ensure extension is .xlsx
+        if (!fileName.endsWith('.xlsx')) {
+            fileName += '.xlsx';
+        }
+
+        // 2. Generate WorkBook
         const ws = XLSX.utils.json_to_sheet(globalData);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
         
-        // Generate file name with timestamp
-        const date = new Date();
-        const fileName = `Booth_Data_${date.getHours()}${date.getMinutes()}.xlsx`;
+        // 3. Write to binary array (better compatibility for mobile than pure writefile)
+        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
         
-        XLSX.writeFile(wb, fileName);
+        // 4. Create Blob with specific Excel MIME type
+        const blob = new Blob([wbout], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+        
+        // 5. Create download link
+        const url = window.URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = fileName;
+        
+        // 6. Trigger Download
+        document.body.appendChild(anchor);
+        anchor.click();
+        
+        // 7. Cleanup
+        setTimeout(() => {
+            document.body.removeChild(anchor);
+            window.URL.revokeObjectURL(url);
+        }, 100);
     }
 
     // Close modal if clicking outside
