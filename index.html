@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Booth Data Entry</title>
+    <title>Booth 184 Data Entry</title>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
     <style>
         :root {
@@ -13,6 +13,7 @@
             --card-bg: #ffffff;
             --text: #1f2937;
             --border: #e5e7eb;
+            --danger: #ef4444;
         }
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -23,7 +24,7 @@
             margin: 0;
             padding: 0;
             color: var(--text);
-            padding-bottom: 80px; /* Space for fixed footer */
+            padding-bottom: 90px; /* Space for fixed footer */
         }
 
         /* Header */
@@ -35,9 +36,22 @@
             top: 0;
             z-index: 100;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
-        h1 { margin: 0; font-size: 1.2rem; }
+        h1 { margin: 0; font-size: 1.1rem; }
+        
+        .header-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
 
         /* Controls Area */
         .controls {
@@ -49,17 +63,24 @@
             gap: 10px;
         }
 
-        input[type="file"] {
-            font-size: 0.9rem;
+        .file-input-wrapper {
+            background: #f0f9ff;
+            border: 1px dashed var(--primary);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
         }
 
         .search-bar {
             width: 100%;
-            padding: 10px;
+            padding: 12px;
             border: 1px solid var(--border);
             border-radius: 8px;
             font-size: 1rem;
+            outline: none;
         }
+        
+        .search-bar:focus { border-color: var(--primary); }
 
         /* List View */
         #dataList {
@@ -73,16 +94,16 @@
             background: var(--card-bg);
             border-radius: 12px;
             padding: 15px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
             border: 1px solid var(--border);
             display: flex;
             flex-direction: column;
             gap: 5px;
             cursor: pointer;
-            transition: transform 0.1s;
+            position: relative;
         }
 
-        .card:active { transform: scale(0.98); background: #f9fafb; }
+        .card:active { background: #f9fafb; border-color: var(--primary); }
 
         .card-header {
             display: flex;
@@ -98,7 +119,7 @@
             color: white;
             padding: 2px 8px;
             border-radius: 12px;
-            font-size: 0.8rem;
+            font-size: 0.85rem;
             font-weight: bold;
         }
 
@@ -122,7 +143,7 @@
             top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.5);
             z-index: 1000;
-            align-items: end; /* Bottom sheet on mobile */
+            align-items: end; 
         }
         
         @media (min-width: 768px) {
@@ -137,6 +158,8 @@
             border-radius: 16px 16px 0 0;
             padding: 20px;
             animation: slideUp 0.3s ease-out;
+            display: flex;
+            flex-direction: column;
         }
 
         @media (min-width: 768px) {
@@ -146,14 +169,16 @@
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
         .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 0.9rem; }
-        .form-group input {
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 0.9rem; color: #374151; }
+        .form-group input, .form-group textarea {
             width: 100%;
             padding: 12px;
             border: 1px solid var(--border);
             border-radius: 8px;
             font-size: 1rem;
         }
+        
+        .form-group input:focus { border-color: var(--primary); outline: none; }
 
         .btn-group { display: flex; gap: 10px; margin-top: 20px; }
         
@@ -165,16 +190,20 @@
             font-weight: 600;
             cursor: pointer;
             font-size: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         
         .btn-primary { background: var(--primary); color: white; }
         .btn-secondary { background: #e5e7eb; color: var(--text); }
         .btn-success { background: #10b981; color: white; }
+        .btn-danger { background: var(--danger); color: white; }
 
         /* Floating Action Button */
         .fab {
             position: fixed;
-            bottom: 20px;
+            bottom: 85px;
             right: 20px;
             width: 56px;
             height: 56px;
@@ -185,7 +214,7 @@
             align-items: center;
             justify-content: center;
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-            font-size: 24px;
+            font-size: 28px;
             cursor: pointer;
             z-index: 90;
         }
@@ -197,41 +226,63 @@
             left: 0;
             width: 100%;
             background: white;
-            padding: 10px;
+            padding: 10px 15px;
             border-top: 1px solid var(--border);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            z-index: 90;
+            z-index: 95;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
         }
         
-        .hidden { display: none; }
+        .status-badge {
+            font-size: 0.8rem;
+            background: #e0f2fe;
+            color: #0369a1;
+            padding: 4px 8px;
+            border-radius: 12px;
+        }
+
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
 <header>
-    <h1>Booth 184 Data Entry</h1>
+    <h1>Booth 184 Entry</h1>
+    <button class="header-btn" onclick="clearStorage()">Reset App</button>
 </header>
 
+<div class="controls" id="uploadSection">
+    <div class="file-input-wrapper">
+        <div style="margin-bottom: 8px; font-weight: 600;">Load Data (First Time Only)</div>
+        <input type="file" id="fileUpload" accept=".csv, .xlsx, .xls" />
+        <div style="font-size: 0.8rem; color: #666; margin-top: 5px;">Supports Excel or CSV</div>
+    </div>
+</div>
+
 <div class="controls">
-    <div style="font-size: 0.8rem; color: #666; margin-bottom: 5px;">Step 1: Upload File</div>
-    <input type="file" id="fileUpload" accept=".csv, .xlsx, .xls" />
-    <input type="text" class="search-bar" id="searchInput" placeholder="Search by Name or Vote No..." onkeyup="filterData()">
+    <input type="text" class="search-bar" id="searchInput" placeholder="Search Name, Vote No, or House No..." onkeyup="filterData()">
 </div>
 
 <div id="dataList">
-    <div style="text-align:center; padding: 40px; color: #999;">
-        Upload an Excel/CSV file to begin.<br>
-        Or click + to add manually.
+    <div style="text-align:center; padding: 60px 20px; color: #999;">
+        <h3>No Data Loaded</h3>
+        <p>Upload a file above to begin.</p>
+        <p style="font-size: 0.9rem;">Once loaded, data is saved automatically.</p>
     </div>
 </div>
 
 <div class="fab" onclick="openAddModal()">+</div>
 
 <div class="fixed-footer">
-    <span id="recordCount" style="font-size: 0.9rem; color: #666;">0 Records</span>
-    <button class="btn btn-success" style="flex: 0 0 120px;" onclick="exportData()">Save / Export</button>
+    <div style="display: flex; flex-direction: column;">
+        <span id="recordCount" style="font-weight: bold;">0 Records</span>
+        <span id="saveStatus" style="font-size: 0.75rem; color: #10b981; display:none;">Saved to phone</span>
+    </div>
+    <button class="btn btn-success" style="flex: 0 0 140px; padding: 10px;" onclick="exportData()">
+        Download XLS
+    </button>
 </div>
 
 <div id="editModal" class="modal">
@@ -246,44 +297,89 @@
 </div>
 
 <script>
+    // --- APP STATE ---
     let globalData = [];
-    let currentEditIndex = -1;
-    
-    // Default headers if creating new
-    const defaultHeaders = [
+    let currentHeaders = [
         "Vote No", "Name", "Name (Pbi)", "Relation", "Relative Name", 
         "House No", "Age", "Gender", "EPIC NO"
     ];
+    let currentEditIndex = -1;
+    const STORAGE_KEY = "BOOTH_184_DATA_V1";
 
-    // Headers mapped from the uploaded file
-    let currentHeaders = [...defaultHeaders];
+    // --- INITIALIZATION ---
+    document.addEventListener('DOMContentLoaded', () => {
+        loadFromStorage();
+    });
 
+    // --- FILE HANDLING ---
     document.getElementById('fileUpload').addEventListener('change', handleFile, false);
 
     function handleFile(e) {
         const file = e.target.files[0];
-        const reader = new FileReader();
+        if(!file) return;
 
+        const reader = new FileReader();
         reader.onload = function(e) {
             const data = new Uint8Array(e.target.result);
             const workbook = XLSX.read(data, {type: 'array'});
-            
-            // Get first sheet
             const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-            
-            // Convert to JSON
             const jsonData = XLSX.utils.sheet_to_json(firstSheet, {defval:""});
             
             if(jsonData.length > 0) {
                 globalData = jsonData;
-                // Update headers based on file content
+                // Update headers dynamically based on file
                 currentHeaders = Object.keys(jsonData[0]);
+                
+                saveToStorage();
                 renderList();
+                document.getElementById('uploadSection').classList.add('hidden'); // Hide upload after success
+                alert("Data loaded and saved to phone memory!");
             }
         };
         reader.readAsArrayBuffer(file);
     }
 
+    // --- STORAGE MANAGEMENT ---
+    function saveToStorage() {
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                headers: currentHeaders,
+                data: globalData
+            }));
+            showSaveStatus();
+        } catch (e) {
+            alert("Storage full! Try clearing old data or keeping lists smaller.");
+        }
+    }
+
+    function loadFromStorage() {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+            const parsed = JSON.parse(stored);
+            globalData = parsed.data || [];
+            currentHeaders = parsed.headers || currentHeaders;
+            
+            if (globalData.length > 0) {
+                renderList();
+                document.getElementById('uploadSection').classList.add('hidden');
+            }
+        }
+    }
+
+    function clearStorage() {
+        if(confirm("Delete all data from phone? You will need to upload the file again.")) {
+            localStorage.removeItem(STORAGE_KEY);
+            location.reload();
+        }
+    }
+
+    function showSaveStatus() {
+        const el = document.getElementById('saveStatus');
+        el.style.display = 'block';
+        setTimeout(() => el.style.display = 'none', 3000);
+    }
+
+    // --- UI RENDERING ---
     function renderList(dataToRender = globalData) {
         const listContainer = document.getElementById('dataList');
         const countSpan = document.getElementById('recordCount');
@@ -291,17 +387,20 @@
         
         countSpan.innerText = `${dataToRender.length} Records`;
 
-        dataToRender.forEach((row, index) => {
-            // Identify key fields loosely to handle variations in CSV naming
+        // Limit rendering for performance (first 100 or scroll) - Simplified for now
+        const displayData = dataToRender.slice(0, 200); 
+
+        displayData.forEach((row) => {
+            // Fuzzy match keys
             const voteNo = findVal(row, ['Vote No', 'ਵੋਟ ਨੰਬਰ', 'No.', 'S.No']) || '#';
             const nameEng = findVal(row, ['Name', 'Name (Eng)']) || 'Unknown';
-            const namePbi = findVal(row, ['Name (Pbi)', 'ਵੋਟਰ ਦਾ ਨਾਮ', 'Voter Name']) || '';
+            const namePbi = findVal(row, ['Name (Pbi)', 'ਵੋਟਰ ਦਾ ਨਾਮ']) || '';
             const epic = findVal(row, ['EPIC NO.', 'EPIC', 'Card No']) || '';
-            const gender = findVal(row, ['Gender', 'Sex', 'ਲਿੰਗ']) || '';
-            const age = findVal(row, ['Age', 'ਉਮਰ']) || '';
-            const house = findVal(row, ['House No', 'H.No', 'ਮਕਾਨ ਨੰ.']) || '';
+            const gender = findVal(row, ['Gender', 'Sex']) || '';
+            const age = findVal(row, ['Age']) || '';
+            const house = findVal(row, ['House No', 'H.No', 'ਮਕਾਨ']) || '';
 
-            // Store original index to map back for editing
+            // Find actual index in globalData for editing
             const originalIndex = globalData.indexOf(row);
 
             const card = document.createElement('div');
@@ -310,7 +409,7 @@
             
             card.innerHTML = `
                 <div class="card-header">
-                    <span class="vote-num">Vote: ${voteNo}</span>
+                    <span class="vote-num">${voteNo}</span>
                     <span class="epic-no">${epic}</span>
                 </div>
                 <div>
@@ -319,24 +418,27 @@
                 </div>
                 <div class="details">
                     <span>🏠 ${house}</span>
-                    <span>👤 ${age} Y / ${gender}</span>
+                    <span>👤 ${age} / ${gender}</span>
                 </div>
             `;
             listContainer.appendChild(card);
         });
+
+        if (dataToRender.length > 200) {
+            const more = document.createElement('div');
+            more.style.textAlign = 'center';
+            more.style.padding = '20px';
+            more.style.color = '#666';
+            more.innerText = `...and ${dataToRender.length - 200} more (use search to find)`;
+            listContainer.appendChild(more);
+        }
     }
 
-    // Helper to fuzzy match column names
     function findVal(row, potentialKeys) {
         for (let k of Object.keys(row)) {
+            const keyLower = k.trim().toLowerCase();
             for (let pk of potentialKeys) {
-                if (k.trim().toLowerCase() === pk.trim().toLowerCase()) return row[k];
-            }
-        }
-        // Fallback: Check if key contains the string
-        for (let k of Object.keys(row)) {
-            for (let pk of potentialKeys) {
-                if (k.toLowerCase().includes(pk.toLowerCase())) return row[k];
+                if (keyLower.includes(pk.toLowerCase())) return row[k];
             }
         }
         return '';
@@ -344,6 +446,7 @@
 
     function filterData() {
         const query = document.getElementById('searchInput').value.toLowerCase();
+        // Optimize search: Check specific fields first or stringify row
         const filtered = globalData.filter(row => {
             return Object.values(row).some(val => 
                 String(val).toLowerCase().includes(query)
@@ -352,6 +455,7 @@
         renderList(filtered);
     }
 
+    // --- EDIT/ADD MODAL ---
     function openEditModal(index) {
         currentEditIndex = index;
         const rowData = globalData[index];
@@ -361,11 +465,9 @@
     }
 
     function openAddModal() {
-        currentEditIndex = -1; // New record
-        // Create empty object based on current headers
+        currentEditIndex = -1;
         const emptyData = {};
         currentHeaders.forEach(h => emptyData[h] = "");
-        
         buildForm(emptyData);
         document.getElementById('modalTitle').innerText = "Add New Voter";
         document.getElementById('editModal').style.display = 'flex';
@@ -375,9 +477,6 @@
         const formContainer = document.getElementById('modalForm');
         formContainer.innerHTML = '';
 
-        // Determine order: Try to put important fields first
-        const priorityKeys = ['Vote No', 'Name', 'Name (Pbi)', 'EPIC NO.', 'House No'];
-        
         currentHeaders.forEach(key => {
             const wrapper = document.createElement('div');
             wrapper.className = 'form-group';
@@ -390,9 +489,6 @@
             input.id = `input-${key}`;
             input.value = data[key] || '';
             
-            // Auto-focus on Name if empty
-            if(key.includes('Name') && !data[key]) input.autofocus = true;
-
             wrapper.appendChild(label);
             wrapper.appendChild(input);
             formContainer.appendChild(wrapper);
@@ -403,17 +499,16 @@
         const newData = {};
         currentHeaders.forEach(key => {
             const input = document.getElementById(`input-${key}`);
-            newData[key] = input.value;
+            if(input) newData[key] = input.value;
         });
 
         if (currentEditIndex > -1) {
-            // Update existing
             globalData[currentEditIndex] = newData;
         } else {
-            // Add new
             globalData.push(newData);
         }
 
+        saveToStorage(); // Auto-save
         closeModal();
         renderList(); 
         filterData(); 
@@ -423,57 +518,48 @@
         document.getElementById('editModal').style.display = 'none';
     }
 
+    // --- EXPORT FUNCTION ---
     function exportData() {
         if(globalData.length === 0) {
             alert("No data to save!");
             return;
         }
         
-        // 1. Confirm and Ask for Filename
-        const defaultName = `Booth_Data_${new Date().getHours()}${new Date().getMinutes()}.xlsx`;
+        // 1. Ask for filename
+        let defaultName = `Booth_Data_${new Date().toISOString().slice(0,10)}.xlsx`;
         let fileName = prompt("Enter filename to save:", defaultName);
-        
-        if (fileName === null) return; // User clicked Cancel
-        
-        // Ensure extension is .xlsx
-        if (!fileName.endsWith('.xlsx')) {
-            fileName += '.xlsx';
-        }
+        if (fileName === null) return;
+        if (!fileName.endsWith('.xlsx')) fileName += '.xlsx';
 
-        // 2. Generate WorkBook
+        // 2. Create Workbook
         const ws = XLSX.utils.json_to_sheet(globalData);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+        XLSX.utils.book_append_sheet(wb, ws, "BoothData");
         
-        // 3. Write to binary array (better compatibility for mobile than pure writefile)
+        // 3. Write binary (Mobile Compatible)
         const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
         
-        // 4. Create Blob with specific Excel MIME type
+        // 4. Create Blob
         const blob = new Blob([wbout], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
         
-        // 5. Create download link
+        // 5. Download
         const url = window.URL.createObjectURL(blob);
         const anchor = document.createElement("a");
         anchor.href = url;
         anchor.download = fileName;
-        
-        // 6. Trigger Download
         document.body.appendChild(anchor);
         anchor.click();
         
-        // 7. Cleanup
         setTimeout(() => {
             document.body.removeChild(anchor);
             window.URL.revokeObjectURL(url);
         }, 100);
     }
 
-    // Close modal if clicking outside
+    // Close modal on outside click
     window.onclick = function(event) {
         const modal = document.getElementById('editModal');
-        if (event.target == modal) {
-            closeModal();
-        }
+        if (event.target == modal) closeModal();
     }
 </script>
 
